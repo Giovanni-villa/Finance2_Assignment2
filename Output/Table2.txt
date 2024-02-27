@@ -1,0 +1,9 @@
+	(1)	(2)	(3)	(4)	(5)
+VARIABLES	All Mutual Funds	All Mutual Funds	Passive	Active	Unclassified
+					
+top250	4.532**	4.561**	0.633**	3.253**	0.882**
+	(0.689)	(0.690)	(0.048)	(0.582)	(0.183)
+					
+R-squared	0.272	0.270	0.569	0.225	0.229
+Robust standard errors in parentheses					
+** p<0.01, * p<0.10					

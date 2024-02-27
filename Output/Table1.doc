@@ -1,0 +1,130 @@
+{\rtf1\ansi\deff0 {\fonttbl{\f0\fnil Garamond;}}
+{\info {\author .}{\company .}{\title .}}
+\deflang1033\plain\fs20
+{\footer\pard\qc\plain\f0\fs20\chpgn\par}
+{
+{\fs20\b\qc\line Summary statistics }{\par}
+{\trowd\trgaph108\trleft-108
+\clbrdrt\brdrw10\brdrs \clbrdrb\brdrw25\brdrs  \cellx1100
+\fs20\pard\intbl\qr { }\cell
+\clbrdrt\brdrw10\brdrs \clbrdrb\brdrw25\brdrs  \cellx2320
+\fs20\pard\intbl\qr {{ N}}\cell
+\clbrdrt\brdrw10\brdrs \clbrdrb\brdrw25\brdrs  \cellx3540
+\fs20\pard\intbl\qr {{ Mean}}\cell
+\clbrdrt\brdrw10\brdrs \clbrdrb\brdrw25\brdrs  \cellx4760
+\fs20\pard\intbl\qr {{ Median}}\cell
+\clbrdrt\brdrw10\brdrs \clbrdrb\brdrw25\brdrs  \cellx5980
+\fs20\pard\intbl\qr {{ SD}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx1100
+\fs20\pard\intbl\ql {{ MF OWN}}\cell
+\cellx2320
+\qr {{4325}}\cell
+\cellx3540
+\qr {{33.031}}\cell
+\cellx4760
+\qr {{30.490}}\cell
+\cellx5980
+\qr {{18.861}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx1100
+\fs20\pard\intbl\ql {{ PF OWN}}\cell
+\cellx2320
+\qr {{4325}}\cell
+\cellx3540
+\qr {{2.557}}\cell
+\cellx4760
+\qr {{2.296}}\cell
+\cellx5980
+\qr {{1.717}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx1100
+\fs20\pard\intbl\ql {{ AF OWN}}\cell
+\cellx2320
+\qr {{4325}}\cell
+\cellx3540
+\qr {{25.176}}\cell
+\cellx4760
+\qr {{23.075}}\cell
+\cellx5980
+\qr {{15.283}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx1100
+\fs20\pard\intbl\ql {{ U OWN}}\cell
+\cellx2320
+\qr {{4325}}\cell
+\cellx3540
+\qr {{5.757}}\cell
+\cellx4760
+\qr {{4.400}}\cell
+\cellx5980
+\qr {{4.913}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx1100
+\fs20\pard\intbl\ql {{ indpt pct}}\cell
+\cellx2320
+\qr {{2696}}\cell
+\cellx3540
+\qr {{.651}}\cell
+\cellx4760
+\qr {{0.667}}\cell
+\cellx5980
+\qr {{.174}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx1100
+\fs20\pard\intbl\ql {{ ppill rem}}\cell
+\cellx2320
+\qr {{3097}}\cell
+\cellx3540
+\qr {{.013}}\cell
+\cellx4760
+\qr {{0.000}}\cell
+\cellx5980
+\qr {{.112}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx1100
+\fs20\pard\intbl\ql {{ ab sm}}\cell
+\cellx2320
+\qr {{3097}}\cell
+\cellx3540
+\qr {{.005}}\cell
+\cellx4760
+\qr {{0.000}}\cell
+\cellx5980
+\qr {{.072}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\cellx1100
+\fs20\pard\intbl\ql {{ DUALCLASS}}\cell
+\cellx2320
+\qr {{3097}}\cell
+\cellx3540
+\qr {{.118}}\cell
+\cellx4760
+\qr {{0.000}}\cell
+\cellx5980
+\qr {{.322}}\cell
+\row}
+{\trowd\trgaph108\trleft-108
+\clbrdrb\brdrw15\brdrs\cellx1100
+\fs20\pard\intbl\ql {{ ROA W}}\cell
+\clbrdrb\brdrw15\brdrs\cellx2320
+\qr {{4324}}\cell
+\clbrdrb\brdrw15\brdrs\cellx3540
+\qr {{.04}}\cell
+\clbrdrb\brdrw15\brdrs\cellx4760
+\qr {{0.042}}\cell
+\clbrdrb\brdrw15\brdrs\cellx5980
+\qr {{.089}}\cell
+\row}
+
+
+\writepositionforappend
+}}

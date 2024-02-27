@@ -1,0 +1,17 @@
+{\rtf1\fs24
+\trowd\trgaph75\trleft-75\intbl\trqc\clbrdrt\brdrs\cellx1440\clbrdrt\brdrs\cellx3600\clbrdrt\brdrs\cellx5760\clbrdrt\brdrs\cellx7920
+\ql \cell\qc (1)\cell\qc (2)\cell\qc (3)\cell\row
+\trowd\trgaph75\trleft-75\trqc\cellx1440\cellx3600\cellx5760\cellx7920
+\trowd\trgaph75\trleft-75\trqc\clbrdrb\brdrs\cellx1440\clbrdrb\brdrs\cellx3600\clbrdrb\brdrs\cellx5760\clbrdrb\brdrs\cellx7920
+\ql VARIABLES\cell\qc Polynomial N=1\cell\qc Polynomial N=2\cell\qc Polynomial N=3\cell\row
+\trowd\trgaph75\trleft-75\trqc\cellx1440\cellx3600\cellx5760\cellx7920
+\ql \cell\qc \cell\qc \cell\qc \cell\row
+\ql top250\cell\qc 0.414**\cell\qc 0.409**\cell\qc 0.368**\cell\row
+\ql \cell\qc (0.028)\cell\qc (0.029)\cell\qc (0.028)\cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\row
+\trowd\trgaph75\trleft-75\trqc\trbrdrb\brdrs\clbrdrb\brdrs\cellx1440\clbrdrb\brdrs\cellx3600\clbrdrb\brdrs\cellx5760\clbrdrb\brdrs\cellx7920
+\ql R-squared\cell\qc 0.562\cell\qc 0.563\cell\qc 0.569\cell\row
+\pard\qc
+Robust standard errors in parentheses\par
+** p<0.01, * p<0.10\par
+}

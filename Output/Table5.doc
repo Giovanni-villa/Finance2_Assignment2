@@ -1,0 +1,65 @@
+{\rtf1\fs24
+\trowd\trgaph75\trleft-75\intbl\trqc\clbrdrt\brdrs\cellx2016\clbrdrt\brdrs\cellx4176\clbrdrt\brdrs\cellx6336\clbrdrt\brdrs\cellx8496\clbrdrt\brdrs\cellx10656\clbrdrt\brdrs\cellx12816\clbrdrt\brdrs\cellx14976
+\ql \cell\qc (1)\cell\qc (2)\cell\qc (3)\cell\qc (4)\cell\qc (5)\cell\qc (6)\cell\row
+\trowd\trgaph75\trleft-75\trqc\cellx2016\cellx4176\cellx6336\cellx8496\cellx10656\cellx12816\cellx14976
+\trowd\trgaph75\trleft-75\trqc\clbrdrb\brdrs\cellx2016\clbrdrb\brdrs\cellx4176\clbrdrb\brdrs\cellx6336\clbrdrb\brdrs\cellx8496\clbrdrb\brdrs\cellx10656\clbrdrb\brdrs\cellx12816\clbrdrb\brdrs\cellx14976
+\ql VARIABLES\cell\qc Polynomial N=1\cell\qc Polynomial N=2\cell\qc Polynomial N=3\cell\qc Polynomial N=1\cell\qc Polynomial N=2\cell\qc Polynomial N=3\cell\row
+\trowd\trgaph75\trleft-75\trqc\cellx2016\cellx4176\cellx6336\cellx8496\cellx10656\cellx12816\cellx14976
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql pas\cell\qc 0.177**\cell\qc 0.175**\cell\qc 0.161*\cell\qc 0.088**\cell\qc 0.079**\cell\qc 0.079**\cell\row
+\ql \cell\qc (0.061)\cell\qc (0.061)\cell\qc (0.063)\cell\qc (0.026)\cell\qc (0.025)\cell\qc (0.025)\cell\row
+\ql 1999.yr\cell\qc \cell\qc \cell\qc 0.013\cell\qc \cell\qc \cell\qc \cell\row
+\ql \cell\qc \cell\qc \cell\qc (0.012)\cell\qc \cell\qc \cell\qc \cell\row
+\ql 2000.yr\cell\qc \cell\qc \cell\qc -0.005\cell\qc \cell\qc \cell\qc \cell\row
+\ql \cell\qc \cell\qc \cell\qc (0.027)\cell\qc \cell\qc \cell\qc \cell\row
+\ql 2001.yr\cell\qc \cell\qc \cell\qc -0.031\cell\qc \cell\qc \cell\qc \cell\row
+\ql \cell\qc \cell\qc \cell\qc (0.041)\cell\qc \cell\qc \cell\qc \cell\row
+\ql 2002.yr\cell\qc \cell\qc \cell\qc -0.132\cell\qc \cell\qc \cell\qc \cell\row
+\ql \cell\qc \cell\qc \cell\qc (0.081)\cell\qc \cell\qc \cell\qc \cell\row
+\ql 2003o.yr\cell\qc \cell\qc \cell\qc -\cell\qc \cell\qc \cell\qc \cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql 2004o.yr\cell\qc \cell\qc \cell\qc -\cell\qc \cell\qc \cell\qc \cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql 2005o.yr\cell\qc \cell\qc \cell\qc -\cell\qc \cell\qc \cell\qc \cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql 2006o.yr\cell\qc \cell\qc \cell\qc -\cell\qc \cell\qc \cell\qc -\cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql o._Iyr_2003\cell\qc -\cell\qc -\cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql o._Iyr_2004\cell\qc -\cell\qc -\cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql o._Iyr_2005\cell\qc -\cell\qc -\cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql o._Iyr_2006\cell\qc -\cell\qc -\cell\qc \cell\qc -\cell\qc -\cell\qc \cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql o._Iyr_1999\cell\qc \cell\qc \cell\qc \cell\qc -\cell\qc -\cell\qc \cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql o._Iyr_2000\cell\qc \cell\qc \cell\qc \cell\qc -\cell\qc -\cell\qc \cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql o._Iyr_2001\cell\qc \cell\qc \cell\qc \cell\qc -\cell\qc -\cell\qc \cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql o._Iyr_2002\cell\qc \cell\qc \cell\qc \cell\qc -\cell\qc -\cell\qc \cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql o.log_mktcap3\cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc -\cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql 1999o.yr\cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc -\cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql 2000o.yr\cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc -\cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql 2001o.yr\cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc -\cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql 2002o.yr\cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc -\cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql 2003.yr\cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc 0.022\cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc (0.014)\cell\row
+\ql 2004.yr\cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc 0.008\cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc (0.009)\cell\row
+\ql 2005.yr\cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc 0.043**\cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc (0.014)\cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\trowd\trgaph75\trleft-75\trqc\trbrdrb\brdrs\clbrdrb\brdrs\cellx2016\clbrdrb\brdrs\cellx4176\clbrdrb\brdrs\cellx6336\clbrdrb\brdrs\cellx8496\clbrdrb\brdrs\cellx10656\clbrdrb\brdrs\cellx12816\clbrdrb\brdrs\cellx14976
+\ql R-squared\cell\qc 0.070\cell\qc 0.072\cell\qc 0.091\cell\qc \cell\qc 0.023\cell\qc 0.023\cell\row
+\pard\qc
+Robust standard errors in parentheses\par
+** p<0.01, * p<0.10\par
+}

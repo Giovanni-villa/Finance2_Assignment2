@@ -1,0 +1,33 @@
+{\rtf1\fs24
+\trowd\trgaph75\trleft-75\intbl\trqc\clbrdrt\brdrs\cellx1440\clbrdrt\brdrs\cellx3600\clbrdrt\brdrs\cellx5760\clbrdrt\brdrs\cellx7920\clbrdrt\brdrs\cellx10080\clbrdrt\brdrs\cellx12240\clbrdrt\brdrs\cellx14400
+\ql \cell\qc (1)\cell\qc (2)\cell\qc (3)\cell\qc (4)\cell\qc (5)\cell\qc (6)\cell\row
+\trowd\trgaph75\trleft-75\trqc\cellx1440\cellx3600\cellx5760\cellx7920\cellx10080\cellx12240\cellx14400
+\trowd\trgaph75\trleft-75\trqc\clbrdrb\brdrs\cellx1440\clbrdrb\brdrs\cellx3600\clbrdrb\brdrs\cellx5760\clbrdrb\brdrs\cellx7920\clbrdrb\brdrs\cellx10080\clbrdrb\brdrs\cellx12240\clbrdrb\brdrs\cellx14400
+\ql VARIABLES\cell\qc Polynomial N=1\cell\qc Polynomial N=2\cell\qc Polynomial N=3\cell\qc Polynomial N=1\cell\qc Polynomial N=2\cell\qc Polynomial N=3\cell\row
+\trowd\trgaph75\trleft-75\trqc\cellx1440\cellx3600\cellx5760\cellx7920\cellx10080\cellx12240\cellx14400
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\ql pas\cell\qc 0.023*\cell\qc 0.024*\cell\qc 0.011\cell\qc 0.017*\cell\qc 0.016*\cell\qc 0.017*\cell\row
+\ql \cell\qc (0.011)\cell\qc (0.011)\cell\qc (0.011)\cell\qc (0.007)\cell\qc (0.007)\cell\qc (0.007)\cell\row
+\ql 1999.yr\cell\qc \cell\qc \cell\qc 0.000\cell\qc \cell\qc \cell\qc -0.002*\cell\row
+\ql \cell\qc \cell\qc \cell\qc (0.002)\cell\qc \cell\qc \cell\qc (0.001)\cell\row
+\ql 2000.yr\cell\qc \cell\qc \cell\qc 0.006\cell\qc \cell\qc \cell\qc 0.007\cell\row
+\ql \cell\qc \cell\qc \cell\qc (0.007)\cell\qc \cell\qc \cell\qc (0.006)\cell\row
+\ql 2001.yr\cell\qc \cell\qc \cell\qc 0.005\cell\qc \cell\qc \cell\qc 0.003\cell\row
+\ql \cell\qc \cell\qc \cell\qc (0.008)\cell\qc \cell\qc \cell\qc (0.007)\cell\row
+\ql 2002.yr\cell\qc \cell\qc \cell\qc -0.003\cell\qc \cell\qc \cell\qc -0.011*\cell\row
+\ql \cell\qc \cell\qc \cell\qc (0.010)\cell\qc \cell\qc \cell\qc (0.005)\cell\row
+\ql 2003.yr\cell\qc \cell\qc \cell\qc -0.014\cell\qc \cell\qc \cell\qc -0.025*\cell\row
+\ql \cell\qc \cell\qc \cell\qc (0.023)\cell\qc \cell\qc \cell\qc (0.012)\cell\row
+\ql 2004.yr\cell\qc \cell\qc \cell\qc -0.003\cell\qc \cell\qc \cell\qc -0.031*\cell\row
+\ql \cell\qc \cell\qc \cell\qc (0.021)\cell\qc \cell\qc \cell\qc (0.013)\cell\row
+\ql 2005.yr\cell\qc \cell\qc \cell\qc 0.002\cell\qc \cell\qc \cell\qc -0.025*\cell\row
+\ql \cell\qc \cell\qc \cell\qc (0.017)\cell\qc \cell\qc \cell\qc (0.010)\cell\row
+\ql 2006.yr\cell\qc \cell\qc \cell\qc 0.017\cell\qc \cell\qc \cell\qc -0.024*\cell\row
+\ql \cell\qc \cell\qc \cell\qc (0.022)\cell\qc \cell\qc \cell\qc (0.012)\cell\row
+\ql \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\qc \cell\row
+\trowd\trgaph75\trleft-75\trqc\trbrdrb\brdrs\clbrdrb\brdrs\cellx1440\clbrdrb\brdrs\cellx3600\clbrdrb\brdrs\cellx5760\clbrdrb\brdrs\cellx7920\clbrdrb\brdrs\cellx10080\clbrdrb\brdrs\cellx12240\clbrdrb\brdrs\cellx14400
+\ql R-squared\cell\qc \cell\qc 0.001\cell\qc 0.024\cell\qc \cell\qc \cell\qc \cell\row
+\pard\qc
+Robust standard errors in parentheses\par
+** p<0.01, * p<0.10\par
+}

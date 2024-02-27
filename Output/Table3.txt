@@ -1,0 +1,9 @@
+	(1)	(2)	(3)
+VARIABLES	Polynomial N=1	Polynomial N=2	Polynomial N=3
+			
+top250	0.414**	0.409**	0.368**
+	(0.028)	(0.029)	(0.028)
+			
+R-squared	0.562	0.563	0.569
+Robust standard errors in parentheses			
+** p<0.01, * p<0.10			
