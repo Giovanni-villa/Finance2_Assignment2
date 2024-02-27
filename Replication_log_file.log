@@ -1,0 +1,1982 @@
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Replication_log_file.log
+  log type:  text
+ opened on:  27 Feb 2024, 07:44:05
+
+. 
+. *** We run the data preparation for the Replication
+. do "$Codes\data_prep.do"
+
+. *** This do-file executes the data preparation for Appel-Gormley-Kein Replication.
+. 
+. 
+. *** We prepare s12 Data to match with the other sources
+. use "$Data\s12_data", clear
+
+. 
+. *** We use the shares outstanding measure that it's more accurate.
+. *** Transform the one 
+. replace shrout2=shrout1*1000 if shrout2==.
+(1,320,762 real changes made)
+
+. drop shrout1
+
+. rename shrout2 shrout
+
+. rename fundname fundname_s12
+
+. 
+. *** dropping non useful variables
+. drop change stkname ticker stkcd  stkcdesc assets
+
+. 
+. gen yr=year(rdate)
+
+. gen mo=month(rdate)
+
+. gen yearmonth=ym(yr, mo)
+
+. *drop rdate
+. format %tm yearmonth
+
+. 
+. *** Keeping only the last day of the month data
+. egen groupid=group(fundno cusip)
+(32,651 missing values generated)
+
+. duplicates tag groupid yearmonth, gen(aux)
+
+Duplicates in terms of groupid yearmonth
+
+. sort groupid yearmonth rdate
+
+. by groupid yearmonth: gen aux2=_n
+
+. by groupid yearmonth: egen aux3=max(aux2)
+
+. drop if aux>0 & aux2<aux3
+(11,390,045 observations deleted)
+
+. drop aux aux2 aux3
+
+. 
+. *** generating end-of-september holdings variable
+. gen shares_sept=shares if mo==9
+(16,914,249 missing values generated)
+
+. bys groupid (yearmonth): gen aux=_n
+
+. bys groupid (yearmonth): replace shares_sept=shares if shares_sept==. & aux==1
+(4040879 real changes made)
+
+. bys groupid (yearmonth): replace shares_sept=shares_sept[_n-1] if shares_sept==.
+(12873262 real changes made)
+
+. drop aux
+
+. 
+. *** Now We impute the previous holding data to each end-of-september data
+. gen aux=9-mo
+
+. bysort groupid (year): egen aux2=min(aux) if aux>=0
+(6,076,682 missing values generated)
+
+. gen shares2=shares_sept if aux2==aux
+(13,549,695 missing values generated)
+
+. bys groupid (yr): replace shares2=shares_sept if _n==1 & shares2==.
+(2596157 real changes made)
+
+. keep if shares2!=.
+(10,953,538 observations deleted)
+
+. drop aux aux2
+
+. 
+. *** We keep the closest to september data in case we have more than one obs in any year
+. *** (Initial data + data in september)
+. bys groupid yr: gen aux=_n
+
+. bys groupid yr: egen aux2=max(aux)
+
+. keep if aux==aux2
+(878,227 observations deleted)
+
+. drop aux aux2 shares shares_sept
+
+. rename shares2 shares
+
+. 
+. *** Now after we have the yearly dataset to yearly data and fill the gaps assuming the holdings
+. *** maintain in case of missing data before 2004
+. xtset groupid yr
+
+Panel variable: groupid (unbalanced)
+ Time variable: yr, 1998 to 2006, but with gaps
+         Delta: 1 unit
+
+. tsfill, full
+
+. bys groupid (yr): replace shares=shares[_n-1] if yr<2004 & shares==.
+(6766312 real changes made)
+
+. drop mo yearmonth rdate shrout
+
+. drop if shares==.
+(26,530,103 observations deleted)
+
+. 
+. *** We recover the other variables for our data
+. bys groupid (yr): replace fundname=fundname[_n-1] if _n>1 & fundname==""
+(6,766,312 real changes made)
+
+. bys groupid (yr): replace cusip=cusip[_n-1] if _n>1 & cusip==""
+(6,766,312 real changes made)
+
+. foreach var of varlist fundno prc{
+  2.         bys groupid (yr): replace `var'=`var'[_n-1] if _n>1 & `var'==.
+  3. } 
+(6766312 real changes made)
+(6742739 real changes made)
+
+. 
+. tostring fundno, replace
+fundno was double now str5
+
+. 
+. save "$Data\s12_data_aux1.dta", replace
+file C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Data\s12_data_aux1.dta saved
+
+. 
+. *** We open Russell 2000 Data and match to our dataset
+. 
+. use "$Data\russell_all.dta", clear
+
+. gen yr = yofd(dofm(yearmonth))
+
+. drop yearmonth
+
+. 
+. merge 1:m cusip yr using "$Data\s12_data_aux1.dta"
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                     4,736,286
+        from master                         0  (_merge==1)
+        from using                  4,736,286  (_merge==2)
+
+    Matched                        10,465,657  (_merge==3)
+    -----------------------------------------
+
+. 
+. *** We keep only holdings for firms in the Russell index
+. drop if _m==2
+(4,736,286 observations deleted)
+
+. drop _m
+
+. 
+. save "$Data\s12_data_aux2.dta", replace
+file C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Data\s12_data_aux2.dta saved
+
+. 
+. *** We add the Float Market-Adj Cap (MktValue variable)
+. 
+. use "$Data\russell_constituents.dta", clear
+
+. 
+. gen yr = year(Date)
+
+. gen mo = month(Date)
+
+. rename MktValue Float
+
+. ** we keep end-of-june data only
+. keep if mo==6
+(288,976 observations deleted)
+
+. drop mo
+
+. 
+. * Getting top250 and bottom 250 of Russell 2000 and 1000 respectively
+. bys yr: egen q75 = pctile(R2000_WT), p(75)
+
+. bys yr: egen q25 = pctile(R1000_WT), p(25)
+
+. gen top250=1 if R2000_WT>=q75 & R2000_WT!=.
+(22,481 missing values generated)
+
+. gen bot250=1 if R1000_WT<=q25 & R1000_WT!=.
+(24,734 missing values generated)
+
+. 
+. keep if top250==1 | bot250==1
+(20,230 observations deleted)
+
+. replace top250=0 if top250==.
+(2,251 real changes made)
+
+. replace bot250=0 if bot250==.
+(4,504 real changes made)
+
+. keep Date CUSIP Float top250 bot250 yr
+
+. 
+. rename CUSIP cusip
+
+. replace cusip=substr(cusip, 1, 8)
+(6,755 real changes made)
+
+. 
+. ** Now we merge with our dataset
+. merge 1:m cusip yr using "$Data\s12_data_aux2.dta"
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                     8,550,480
+        from master                         0  (_merge==1)
+        from using                  8,550,480  (_merge==2)
+
+    Matched                         1,915,177  (_merge==3)
+    -----------------------------------------
+
+. keep if _m==3
+(8,550,480 observations deleted)
+
+. drop _m
+
+. save "$Data\s12_data_aux3.dta", replace
+file C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Data\s12_data_aux3.dta saved
+
+. 
+. *** Merging CRSP Index fund flag variable and MFLINKS
+. 
+. use "$Data\index_fund_flag.dta", clear
+
+. 
+. gen yr=year(caldt)
+
+. gen mo=month(caldt)
+
+. gen yearmonth=ym(yr, mo)
+
+. format %tm yearmonth
+
+. 
+. duplicates drop
+
+Duplicates in terms of all variables
+
+(5 observations deleted)
+
+. drop summary_period2
+
+. drop caldt
+
+. 
+. *** We keep only end-of-september data. We impute the previous non-missing obs
+. *** in case it's not available
+. 
+. xtset crsp_fundno yearmonth
+
+Panel variable: crsp_fundno (unbalanced)
+ Time variable: yearmonth, 1998m3 to 2006m12, but with gaps
+         Delta: 1 month
+
+. tsfill, full
+
+. 
+. bys crsp_fundno (yearmonth): replace index_fund_flag=index_fund_flag[_n-1] if index_fund_flag==""
+(38,814 real changes made)
+
+. drop mo yr
+
+. gen date=dofm(yearmonth)
+
+. gen mo=month(date)
+
+. gen yr=year(date)
+
+. keep if mo==9
+(2,928,624 observations deleted)
+
+. drop date mo yearmonth
+
+. 
+. 
+. *** We generate the index flat variable
+. gen index_flag=0 if index_fund_flag==""
+(5,275 missing values generated)
+
+. replace index_flag=1 if index_flag==.
+(5,275 real changes made)
+
+. drop if index_flag==.
+(0 observations deleted)
+
+. drop index_fund_flag
+
+. duplicates drop
+
+Duplicates in terms of all variables
+
+(0 observations are duplicates)
+
+. 
+. save "$Data\ind_mflink1.dta", replace
+file C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Data\ind_mflink1.dta saved
+
+. 
+. 
+. ** merge with MFLINK1
+. use "$Data\mflink1_raw.dta", clear
+
+. expand 9
+(212,528 observations created)
+
+. bys crsp_fundno: gen yr=_n + 1997
+
+. 
+. merge 1:1 crsp_fundno yr  using "$Data\ind_mflink1.dta"
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                       153,486
+        from master                    60,426  (_merge==1)
+        from using                     93,060  (_merge==2)
+
+    Matched                           178,668  (_merge==3)
+    -----------------------------------------
+
+. drop if _m==1
+(60,426 observations deleted)
+
+. drop _m
+
+. 
+. 
+. ** replacing index flag for the case with multiple fundno for one wficn with 1 if 
+. ** there is one fundno flagged as index fund (following MFLINKS)
+. bys wficn yr: egen aux=max(index_flag)
+
+. replace index_flag=aux
+(82,802 real changes made)
+
+. keep yr wficn index_flag crsp_fundno
+
+. duplicates drop
+
+Duplicates in terms of all variables
+
+(0 observations are duplicates)
+
+. 
+. save "$Data\ind_mflink1.dta", replace
+file C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Data\ind_mflink1.dta saved
+
+. 
+. *** Now we merge with the MFLINKS2 data
+. use "$Data\mflink2_raw.dta", clear
+
+. keep wficn fundname fundno rdate 
+
+. drop if wficn==.
+(861,889 observations deleted)
+
+. gen yr=year(rdate)
+
+. keep if yr>=1998 & yr<=2006
+(204,233 observations deleted)
+
+. drop rdate
+
+. duplicates drop
+
+Duplicates in terms of all variables
+
+(96,526 observations deleted)
+
+. 
+. *** Now we collapse all names by id-year in a single string to facilitate the merge
+. 
+. bys wficn: gen fund_names = fundname[1]
+
+. bys wficn: replace fund_names = fund_names[_n-1] + " " + fundname if _n > 1
+(38,657 real changes made)
+
+. bys wficn: replace fund_names = fund_names[_N]
+(38,657 real changes made)
+
+. drop fundname
+
+. duplicates drop
+
+Duplicates in terms of all variables
+
+(7,527 observations deleted)
+
+. strcompress fund_names
+  Converting str to strL: fund_names
+    strcompress shrank data 86% so far
+  fund_names is strL now coalesced
+  (23,674 bytes saved)
+       compress shrank data  0%
+    strcompress shrank data 86% overall
+
+. 
+. *** Now we flag the words related to passive investing
+. gen passive_ind= 0
+
+. qui foreach word in "INDEX", "IDX", "INDX", "IND", "RUSSELL", "S & P", "S AND P", "S&P", "SANDP", "SP", "DOW", "DJ", "MSCI", "BLOOMBERG", "KBW", "NASDAQ", "NYSE"
+> , "STOXX", "FTSE", "WILSHIRE", "MORNINGSTAR", "100", "400", "500", "600", "900", "1000", "1500", "2000", "5000". {
+
+. 
+. 
+. *** We merge with our MFLINK1 data
+. merge m:m wficn yr using "$Data\ind_mflink1.dta"
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                       165,517
+        from master                     1,936  (_merge==1)
+        from using                    163,581  (_merge==2)
+
+    Matched                           108,215  (_merge==3)
+    -----------------------------------------
+
+. gen active_ind=1 if _m==3 & passive_ind==0
+(171,101 missing values generated)
+
+. replace active_ind=0 if active_ind==.
+(171,101 real changes made)
+
+. replace passive_ind=0 if passive_ind==.
+(163,581 real changes made)
+
+. drop if _m==2
+(163,581 observations deleted)
+
+. drop _m
+
+. keep wficn fundno fund_names passive_ind active_ind yr index_flag
+
+. duplicates drop
+
+Duplicates in terms of all variables
+
+(72,936 observations deleted)
+
+. 
+. *** complement with index_flag from CSRP
+. replace passive_ind= 1 if index_flag==1
+(767 real changes made)
+
+. drop wficn fund_names
+
+. duplicates drop fundno yr, force
+
+Duplicates in terms of fundno yr
+
+(4 observations deleted)
+
+. 
+. *** We merge with our previous data
+. tostring fundno, replace
+fundno was double now str5
+
+. merge 1:m fundno yr using "$Data\s12_data_aux3.dta"
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                       676,855
+        from master                     8,007  (_merge==1)
+        from using                    668,848  (_merge==2)
+
+    Matched                         1,246,329  (_merge==3)
+    -----------------------------------------
+
+. drop if _m==1
+(8,007 observations deleted)
+
+. drop _m 
+
+. 
+. save "$Data\s12_data_aux4.dta", replace
+file C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Data\s12_data_aux4.dta saved
+
+. 
+. 
+. 
+. 
+. *** Now we work with the RiskMetrics Director's data
+. use "$Data\directors.dta", clear
+
+. 
+. keep YEAR LEGACY_PPS_ID RT_ID TICKER CUSIP MEETINGDATE INDEXNAME CLASSIFICATION MTGMONTH
+
+. gen ind_flag=1 if CLASSIFICATION=="I"
+(46,624 missing values generated)
+
+. replace ind_flag=0 if ind_flag==.
+(46,624 real changes made)
+
+. 
+. bys CUSIP MEETINGDATE: egen indpt_pct=mean(ind_flag)
+
+. 
+. keep MEETINGDATE CUSIP indpt_pct 
+
+. 
+. *** We go transform to fiscal date format as it's explained in the paper
+. gen yr=year(MEETINGDATE)
+
+. gen mo=month(MEETINGDATE)
+
+. replace yr=yr+1 if mo>=7
+(20,296 real changes made)
+
+. rename CUSIP cusip6
+
+. drop if yr>=2007 & yr<=1998
+(0 observations deleted)
+
+. 
+. *** We take the avg of the Independent directors percentage in every year by firm
+. collapse (mean) indpt_pct, by(yr cusip6)
+
+. 
+. 
+. *** We merge with our data
+. merge 1:m cusip6 yr using "$Data\s12_data_aux4.dta"
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                       734,618
+        from master                    10,443  (_merge==1)
+        from using                    724,175  (_merge==2)
+
+    Matched                         1,191,002  (_merge==3)
+    -----------------------------------------
+
+. drop if _m==1
+(10,443 observations deleted)
+
+. drop _m
+
+. save "$Data\s12_data_aux5.dta", replace
+file C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Data\s12_data_aux5.dta saved
+
+. 
+. *** Now we work with the governance data from RiskMetrics
+. use "$Data\governance.dta", clear
+
+. 
+. * We keep only relevant variables
+. keep CN6 YEAR PPILL LSPMT DUALCLASS DATE1 DATE2
+
+. 
+. * We generate the Poison pill removal and Greater ability to call special meeting dummies
+. bys CN6 (YEAR): gen ppill_rem=1 if PPILL==0 & PPILL[_n-1]==1
+(9,391 missing values generated)
+
+. replace ppill_rem=0 if ppill_rem==.
+(9,391 real changes made)
+
+. bys CN6 (YEAR): gen ab_sm=1 if LSPMT==0 & LSPMT[_n-1]==1
+(9,519 missing values generated)
+
+. replace ab_sm=0 if ab_sm==.
+(9,519 real changes made)
+
+. 
+. drop DATE1 DATE2 PPILL LSPMT
+
+. 
+. * We complete the panel with the data between periods
+. egen id=group(CN6)
+
+. xtset id YEAR
+
+Panel variable: id (unbalanced)
+ Time variable: YEAR, 1998 to 2006, but with gaps
+         Delta: 1 unit
+
+. tsfill, full
+
+. 
+. bys id (YEAR): replace CN6=CN6[_n-1] if CN6==""
+(12,505 real changes made)
+
+. foreach var of varlist DUALCLASS ab_sm ppill_rem{
+  2.         bys id (YEAR): replace `var'=`var'[_n-1] if `var'==.
+  3. } 
+(12505 real changes made)
+(12505 real changes made)
+(12505 real changes made)
+
+. 
+. drop if CN6==""
+(5,688 observations deleted)
+
+. drop id
+
+. 
+. rename CN6 cusip6
+
+. rename YEAR yr
+
+. 
+. *** We merge with our data
+. merge 1:m cusip6 yr using "$Data\s12_data_aux5.dta"
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                       570,735
+        from master                    17,538  (_merge==1)
+        from using                    553,197  (_merge==2)
+
+    Matched                         1,361,980  (_merge==3)
+    -----------------------------------------
+
+. drop if _m==1
+(17,538 observations deleted)
+
+. drop _m
+
+. 
+. save "$Data\s12_data_aux6.dta", replace
+file C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Data\s12_data_aux6.dta saved
+
+. 
+. *** Now we work with Compustat Data
+. use "$Data\compustat.dta", clear
+
+. keep fyear cusip at csho ni prcc_f LPERMNO LPERMCO
+
+. rename fyear yr
+
+. drop if yr<1998 | yr>=2007
+(32,081 observations deleted)
+
+. replace cusip=substr(cusip, 1, 8)
+(64,530 real changes made)
+
+. 
+. gen ROA=ni/at
+(5,037 missing values generated)
+
+. label variable ROA `Return on Assets'
+
+. 
+. gen aux=csho*prcc_f
+(347 missing values generated)
+
+. bys LPERMCO yr: egen MCap=sum(aux)
+
+. label variable MCap `Total Market Cap by PERMCO'
+
+. keep yr cusip prcc_f at csho ni ROA MCap
+
+. duplicates drop
+
+Duplicates in terms of all variables
+
+(703 observations deleted)
+
+. 
+. *** Merge with our dataset
+. merge 1:m cusip yr using "$Data\s12_data_aux6.dta"
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                       647,870
+        from master                    59,215  (_merge==1)
+        from using                    588,655  (_merge==2)
+
+    Matched                         1,326,522  (_merge==3)
+    -----------------------------------------
+
+. keep if _m==3
+(647,870 observations deleted)
+
+. drop _m
+
+. 
+. *** Eliminating observations for which Market-Cap from CRSP < Total mutual funds holdings
+. gen aux=prc*shares
+(127 missing values generated)
+
+. bys cusip6 yr: egen MF_H=sum(aux)
+
+. replace MCap=MCap*1000000
+(1,323,826 real changes made)
+
+. drop aux
+
+. 
+. drop if MCap<MF_H
+(174,914 observations deleted)
+
+. 
+. 
+. **** Definition of relevant variables ****
+. bys cusip6 yr: egen MF_O=sum(shares)
+
+. bys cusip6 yr: gen MF_OWN=MF_O/(csho*1000000)*100
+
+. bys cusip6 yr: egen PF_O=sum(shares) if passive_ind==1
+(949,569 missing values generated)
+
+. bys cusip6 yr: gen PF_OWN=PF_O/(csho*1000000)*100
+(949,569 missing values generated)
+
+. bys cusip6 yr: egen AF_O=sum(shares) if active_ind==1
+(578,467 missing values generated)
+
+. bys cusip6 yr: gen AF_OWN=AF_O/(csho*1000000)*100
+(578,467 missing values generated)
+
+. 
+. ** Dropping if there is mutual fund ownership is missing
+. drop if MF_O==.
+(0 observations deleted)
+
+. 
+. * Generate unknown ownership indicator
+. gen unknown_ind=1 if active_ind!=1 & passive_ind!=1
+(734,748 missing values generated)
+
+. replace unknown_ind=0 if unknown_ind==.
+(734,748 real changes made)
+
+. 
+. bys cusip yr: egen U_O=sum(shares) if unknown_ind==1
+(734,748 missing values generated)
+
+. bys cusip yr: gen U_OWN=U_O/(csho*1000000)*100
+(734,748 missing values generated)
+
+. 
+. 
+. // *** We keep only variables within our 250 threshhold
+. // keep if bot250==1 | top250==1
+. 
+. save "$Data\s12_data_final.dta", replace
+file C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Data\s12_data_final.dta saved
+
+. 
+end of do-file
+
+. 
+. ***  Table 1 ***
+. do "$Codes\table1.do"
+
+. ***** TABLE 1 ******
+. cd "$wd"
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein
+
+. use "$Data\s12_data_final.dta", clear
+
+. 
+. winsor2 MF_OWN PF_OWN AF_OWN U_OWN ROA, cuts(1 99) suffix(_W)
+
+. collapse (mean) MF_OWN PF_OWN AF_OWN U_OWN indpt_pct ppill_rem ab_sm DUALCLASS ROA_W, by(cusip6 yr)
+
+. 
+. cd "$Output"
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\Output
+
+. asdoc tabstat MF_OWN PF_OWN AF_OWN U_OWN indpt_pct ppill_rem ab_sm DUALCLASS ROA_W, save(Table1) replace stat(N mean median sd)
+
+             |         N       Mean        p50         SD 
+-------------+--------------------------------------------
+      MF_OWN |      4325   33.03074   30.48965   18.86144 
+      PF_OWN |      4325   2.556524   2.295653   1.717474 
+      AF_OWN |      4325    25.1763   23.07492   15.28335 
+       U_OWN |      4325   5.756946    4.39993   4.913226 
+   indpt_pct |      2696   .6511152   .6666667   .1743986 
+   ppill_rem |      3097   .0125928          0    .111527 
+       ab_sm |      3097   .0051663          0   .0717026 
+   DUALCLASS |      3097    .117856          0   .3224896 
+       ROA_W |      4324   .0397751   .0415527   .0886114 
+(file Table1.doc not found)
+Click to Open File:  Table1.doc
+
+. 
+end of do-file
+
+. 
+. ***  Table 2 ***
+. do "$Codes\table2.do"
+
+. ***** TABLE 2 ******
+. cd "$wd"
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein
+
+. use "$Data\s12_data_final.dta", clear
+
+. 
+. // winsor2 MF_OWN PF_OWN AF_OWN U_OWN ROA MCap adj_mrktvalue, cuts(1 99) suffix(_W)
+. collapse (mean) MF_OWN PF_OWN AF_OWN U_OWN indpt_pct ppill_rem ab_sm DUALCLASS ROA MCap adj_mrktvalue top250 bot250 r2000, by(cusip6 yr)
+
+. 
+. gen log_mktcap=ln(MCap)
+
+. gen log_mktcap2=log_mktcap^2
+
+. gen log_mktcap3=log_mktcap^3
+
+. gen log_float=ln(adj_mrktvalue)
+
+. 
+. 
+. *** Especification 1
+. xi: reg MF_OWN top250 log_mktcap log_mktcap2 log_mktcap3 log_float i.yr, r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+
+Linear regression                               Number of obs     =      4,325
+                                                F(12, 1480)       =          .
+                                                Prob > F          =          .
+                                                R-squared         =     0.2705
+                                                Root MSE          =     16.134
+
+                             (Std. err. adjusted for 1,481 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+      MF_OWN | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+      top250 |   4.560742   .6903192     6.61   0.000     3.206634    5.914851
+  log_mktcap |   1886.887   264.6366     7.13   0.000     1367.785     2405.99
+ log_mktcap2 |  -87.32735   12.14004    -7.19   0.000    -111.1409   -63.51384
+ log_mktcap3 |   1.340452   .1852448     7.24   0.000     .9770813    1.703822
+   log_float |   14.66216   .9597046    15.28   0.000     12.77964    16.54469
+   _Iyr_1999 |   5.428172   .6918574     7.85   0.000     4.071046    6.785297
+   _Iyr_2000 |   10.27389   .8940827    11.49   0.000      8.52009     12.0277
+   _Iyr_2001 |   15.92044   .9212827    17.28   0.000     14.11328     17.7276
+   _Iyr_2002 |   18.41874   1.042731    17.66   0.000     16.37335    20.46413
+   _Iyr_2003 |   27.05818   1.134735    23.85   0.000     24.83232    29.28404
+   _Iyr_2004 |   2.205746    .753505     2.93   0.003     .7276949    3.683798
+   _Iyr_2005 |   -2.90357   .8049141    -3.61   0.000    -4.482464   -1.324677
+   _Iyr_2006 |   .6356043   .8690039     0.73   0.465    -1.069006    2.340215
+       _cons |   -13707.7   1921.863    -7.13   0.000    -17477.56   -9937.833
+------------------------------------------------------------------------------
+
+. outreg2 using "$Output\Table2.doc", append ctitle(All Mutual Funds) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table2.doc
+dir : seeout
+
+. 
+. *** Especification 2
+. xi: reg PF_OWN top250 log_mktcap log_mktcap2 log_mktcap3 log_float i.yr, r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+
+Linear regression                               Number of obs     =      4,325
+                                                F(13, 1480)       =     294.20
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.5688
+                                                Root MSE          =     1.1296
+
+                             (Std. err. adjusted for 1,481 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+      PF_OWN | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+      top250 |   .6326326   .0477477    13.25   0.000     .5389723    .7262929
+  log_mktcap |   173.5358   19.65825     8.83   0.000     134.9748    212.0968
+ log_mktcap2 |  -8.033848   .9118103    -8.81   0.000    -9.822426    -6.24527
+ log_mktcap3 |   .1232803    .014075     8.76   0.000     .0956712    .1508894
+   log_float |   1.066133   .0686344    15.53   0.000     .9315023    1.200764
+   _Iyr_1999 |   .1302921   .0336271     3.87   0.000     .0643303    .1962538
+   _Iyr_2000 |   .4823565   .0451014    10.69   0.000     .3938869     .570826
+   _Iyr_2001 |   .9508301    .051588    18.43   0.000     .8496367    1.052023
+   _Iyr_2002 |   1.717795   .0590942    29.07   0.000     1.601878    1.833713
+   _Iyr_2003 |   3.170411   .0825143    38.42   0.000     3.008554    3.332269
+   _Iyr_2004 |   2.862387   .0616482    46.43   0.000     2.741459    2.983314
+   _Iyr_2005 |    2.10529   .0648543    32.46   0.000     1.978073    2.232506
+   _Iyr_2006 |   2.709369   .0691878    39.16   0.000     2.573652    2.845085
+       _cons |  -1257.197   141.2188    -8.90   0.000    -1534.207   -980.1864
+------------------------------------------------------------------------------
+
+. outreg2 using "$Output\Table2.doc", append ctitle(Passive) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table2.doc
+dir : seeout
+
+. 
+. *** Especification 3
+. xi: reg AF_OWN top250 log_mktcap log_mktcap2 log_mktcap3 log_float i.yr, r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+
+Linear regression                               Number of obs     =      4,325
+                                                F(13, 1480)       =      71.01
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.2249
+                                                Root MSE          =     13.476
+
+                             (Std. err. adjusted for 1,481 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+      AF_OWN | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+      top250 |   3.253056    .581976     5.59   0.000      2.11147    4.394641
+  log_mktcap |   1378.777    223.535     6.17   0.000     940.2981    1817.257
+ log_mktcap2 |  -63.91938   10.25669    -6.23   0.000    -84.03858   -43.80017
+ log_mktcap3 |   .9827491   .1565598     6.28   0.000     .6756464    1.289852
+   log_float |   11.11316   .7871922    14.12   0.000     9.569033     12.6573
+   _Iyr_1999 |   4.165345   .5892197     7.07   0.000     3.009551     5.32114
+   _Iyr_2000 |   7.505024   .7541966     9.95   0.000     6.025616    8.984432
+   _Iyr_2001 |   11.09335   .7757641    14.30   0.000     9.571631    12.61506
+   _Iyr_2002 |   12.46353   .8511824    14.64   0.000     10.79387    14.13318
+   _Iyr_2003 |   18.87868   .9269375    20.37   0.000     17.06043    20.69693
+   _Iyr_2004 |  -.8926703   .6629826    -1.35   0.178    -2.193156    .4078153
+   _Iyr_2005 |  -3.307065    .704486    -4.69   0.000    -4.688962   -1.925167
+   _Iyr_2006 |  -.0297821   .7575569    -0.04   0.969    -1.515782    1.456217
+       _cons |  -10002.75   1622.961    -6.16   0.000     -13186.3   -6819.201
+------------------------------------------------------------------------------
+
+. outreg2 using "$Output\Table2.doc", append ctitle(Active) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table2.doc
+dir : seeout
+
+. 
+. *** Especification 4
+. xi: reg U_OWN top250 log_mktcap log_mktcap2 log_mktcap3 log_float i.yr, r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+
+Linear regression                               Number of obs     =      4,325
+                                                F(13, 1480)       =      57.98
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.2291
+                                                Root MSE          =     4.3202
+
+                             (Std. err. adjusted for 1,481 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+       U_OWN | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+      top250 |   .8821083   .1825067     4.83   0.000     .5241089    1.240108
+  log_mktcap |   373.2323   66.33839     5.63   0.000     243.1051    503.3596
+ log_mktcap2 |  -17.17092   3.071563    -5.59   0.000      -23.196   -11.14584
+ log_mktcap3 |   .2621351   .0473492     5.54   0.000     .1692565    .3550137
+   log_float |   2.575481   .2442207    10.55   0.000     2.096425    3.054536
+   _Iyr_1999 |   1.141305   .1626242     7.02   0.000     .8223063    1.460303
+   _Iyr_2000 |   2.303978   .2313878     9.96   0.000     1.850095    2.757861
+   _Iyr_2001 |   3.966524   .2534694    15.65   0.000     3.469326    4.463721
+   _Iyr_2002 |   4.432691   .2712904    16.34   0.000     3.900537    4.964846
+   _Iyr_2003 |   6.292006   .3032272    20.75   0.000     5.697205    6.886807
+   _Iyr_2004 |   1.084729   .2004274     5.41   0.000     .6915771    1.477881
+   _Iyr_2005 |  -.9894636    .193746    -5.11   0.000     -1.36951   -.6094176
+   _Iyr_2006 |  -1.146836   .2015088    -5.69   0.000    -1.542109   -.7515625
+       _cons |  -2725.256   477.7394    -5.70   0.000    -3662.375   -1788.138
+------------------------------------------------------------------------------
+
+. outreg2 using "$Output\Table2.doc", append ctitle(Unclassified) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3)  noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table2.doc
+dir : seeout
+
+. 
+end of do-file
+
+. 
+. ***  Table 3 ***
+. do "$Codes\table3.do"
+
+. 
+. ***** TABLE 3 ******
+. cd "$wd"
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein
+
+. use "$Data\s12_data_final.dta", clear
+
+. 
+. // winsor2 MF_OWN PF_OWN AF_OWN U_OWN ROA MCap adj_mrktvalue, cuts(1 99) suffix(_W)
+. collapse (mean) MF_OWN PF_OWN AF_OWN U_OWN indpt_pct ppill_rem ab_sm DUALCLASS ROA MCap adj_mrktvalue top250 bot250 r2000, by(cusip6 yr)
+
+. 
+. gen log_mktcap=ln(MCap)
+
+. gen log_mktcap2=log_mktcap^2
+
+. gen log_mktcap3=log_mktcap^3
+
+. gen log_float=ln(adj_mrktvalue)
+
+. 
+. egen pas_2=sd(PF_OWN)
+
+. gen pas=PF_OWN/pas_2
+
+. 
+. 
+. 
+. *** Especification 1
+. xi: reg pas top250 log_mktcap log_float i.yr, r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+
+Linear regression                               Number of obs     =      4,325
+                                                F(11, 1480)       =     352.03
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.5620
+                                                Root MSE          =     .66268
+
+                             (Std. err. adjusted for 1,481 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+         pas | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+      top250 |   .4143029   .0281152    14.74   0.000      .359153    .4694528
+  log_mktcap |  -.3687116    .029977   -12.30   0.000    -.4275135   -.3099096
+   log_float |    .629007   .0403214    15.60   0.000     .5499138    .7081001
+   _Iyr_1999 |   .0801093   .0196543     4.08   0.000      .041556    .1186626
+   _Iyr_2000 |   .2742685   .0275577     9.95   0.000     .2202123    .3283247
+   _Iyr_2001 |   .5716394   .0303346    18.84   0.000      .512136    .6311429
+   _Iyr_2002 |   1.014095   .0344693    29.42   0.000      .946481    1.081709
+   _Iyr_2003 |   1.868482    .047864    39.04   0.000     1.774594    1.962371
+   _Iyr_2004 |   1.677052    .036094    46.46   0.000     1.606251    1.747853
+   _Iyr_2005 |   1.230291   .0380936    32.30   0.000     1.155568    1.305014
+   _Iyr_2006 |   1.572675   .0406294    38.71   0.000     1.492977    1.652372
+       _cons |  -.7044285   .6708742    -1.05   0.294    -2.020394    .6115369
+------------------------------------------------------------------------------
+
+. outreg2 using "$Output\Table3.doc", append ctitle(Polynomial N=1) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table3.doc
+dir : seeout
+
+. 
+. *** Especification 2
+. xi: reg pas top250 log_mktcap log_mktcap2 log_float i.yr, r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+
+Linear regression                               Number of obs     =      4,325
+                                                F(12, 1480)       =     322.68
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.5635
+                                                Root MSE          =     .66161
+
+                             (Std. err. adjusted for 1,481 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+         pas | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+      top250 |   .4085318   .0289511    14.11   0.000     .3517422    .4653215
+  log_mktcap |   2.621943   1.542584     1.70   0.089    -.4039414    5.647827
+ log_mktcap2 |  -.0706712   .0367776    -1.92   0.055     -.142813    .0014706
+   log_float |   .6042912   .0398612    15.16   0.000     .5261007    .6824816
+   _Iyr_1999 |   .0754262   .0197234     3.82   0.000     .0367374     .114115
+   _Iyr_2000 |   .2696747   .0273621     9.86   0.000     .2160021    .3233474
+   _Iyr_2001 |   .5573605   .0306111    18.21   0.000     .4973147    .6174063
+   _Iyr_2002 |   1.005902   .0346005    29.07   0.000     .9380305    1.073773
+   _Iyr_2003 |   1.845355   .0484338    38.10   0.000     1.750348    1.940361
+   _Iyr_2004 |   1.659924   .0365692    45.39   0.000     1.588192    1.731657
+   _Iyr_2005 |   1.216011    .038274    31.77   0.000     1.140934    1.291088
+   _Iyr_2006 |   1.560915   .0407049    38.35   0.000      1.48107     1.64076
+       _cons |  -31.96324    16.1331    -1.98   0.048    -63.60941    -.317071
+------------------------------------------------------------------------------
+
+. outreg2 using "$Output\Table3.doc", append ctitle(Polynomial N=2) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table3.doc
+dir : seeout
+
+. 
+. *** Especification 3
+. xi: reg pas top250 log_mktcap log_mktcap2 log_mktcap3 log_float i.yr, r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+
+Linear regression                               Number of obs     =      4,325
+                                                F(13, 1480)       =     294.33
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.5688
+                                                Root MSE          =     .65768
+
+                             (Std. err. adjusted for 1,481 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+         pas | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+      top250 |   .3683506   .0278011    13.25   0.000     .3138169    .4228844
+  log_mktcap |   101.0413   11.44593     8.83   0.000     78.58931    123.4933
+ log_mktcap2 |  -4.677711   .5308978    -8.81   0.000    -5.719103   -3.636319
+ log_mktcap3 |     .07178   .0081951     8.76   0.000     .0557047    .0878553
+   log_float |   .6207565   .0399624    15.53   0.000     .5423676    .6991455
+   _Iyr_1999 |   .0758626   .0195794     3.87   0.000     .0374564    .1142689
+   _Iyr_2000 |   .2808522   .0262603    10.69   0.000     .2293408    .3323637
+   _Iyr_2001 |   .5536212   .0300371    18.43   0.000     .4947013    .6125411
+   _Iyr_2002 |   1.000187   .0344076    29.07   0.000      .932694     1.06768
+   _Iyr_2003 |   1.845973    .048044    38.42   0.000     1.751732    1.940215
+   _Iyr_2004 |   1.666626   .0358947    46.43   0.000     1.596216    1.737036
+   _Iyr_2005 |   1.225806   .0377615    32.46   0.000     1.151734    1.299877
+   _Iyr_2006 |   1.577531   .0402846    39.16   0.000      1.49851    1.656552
+       _cons |  -732.0033   82.22403    -8.90   0.000    -893.2913   -570.7152
+------------------------------------------------------------------------------
+
+. outreg2 using "$Output\Table3.doc", append ctitle(Polynomial N=3) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table3.doc
+dir : seeout
+
+. 
+end of do-file
+
+. 
+. ***  Table 4 ***
+. do "$Codes\table4.do"
+
+. ***** TABLE 4 ******
+. cd "$wd"
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein
+
+. use "$Data\s12_data_final.dta", clear
+
+. 
+. // winsor2 MF_OWN PF_OWN AF_OWN U_OWN ROA MCap adj_mrktvalue, cuts(1 99) suffix(_W)
+. collapse (mean) MF_OWN PF_OWN AF_OWN U_OWN indpt_pct ppill_rem ab_sm DUALCLASS ROA MCap adj_mrktvalue top250 bot250 r2000, by(cusip6 yr)
+
+. 
+. gen log_mktcap=ln(MCap)
+
+. gen log_mktcap2=log_mktcap^2
+
+. gen log_mktcap3=log_mktcap^3
+
+. gen log_float=ln(adj_mrktvalue)
+
+. 
+. egen pas_2=sd(PF_OWN)
+
+. gen pas=PF_OWN/pas_2
+
+. 
+. 
+. 
+. *** Especification 1
+. xi: ivregress 2sls indpt_pct log_mktcap log_float i.yr (pas = top250), r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+
+Instrumental variables 2SLS regression            Number of obs   =      2,696
+                                                  Wald chi2(11)   =     253.92
+                                                  Prob > chi2     =     0.0000
+                                                  R-squared       =     0.1062
+                                                  Root MSE        =     .16485
+
+                               (Std. err. adjusted for 913 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+   indpt_pct | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |   .1117126   .0283574     3.94   0.000     .0561331    .1672922
+  log_mktcap |  -.0640248   .0147936    -4.33   0.000    -.0930197   -.0350299
+   log_float |   .1346083   .0153807     8.75   0.000     .1044626     .164754
+   _Iyr_1999 |   .0178338   .0111646     1.60   0.110    -.0040484    .0397161
+   _Iyr_2000 |   .0110854   .0177053     0.63   0.531    -.0236164    .0457872
+   _Iyr_2001 |   .0003454   .0216929     0.02   0.987     -.042172    .0428627
+   _Iyr_2002 |  -.0628327   .0374506    -1.68   0.093    -.1362345    .0105691
+   _Iyr_2003 |   -.117237   .0650216    -1.80   0.071     -.244677     .010203
+   _Iyr_2004 |   -.118988    .061248    -1.94   0.052    -.2390319     .001056
+   _Iyr_2005 |  -.0676201   .0499014    -1.36   0.175    -.1654251    .0301848
+   _Iyr_2006 |  -.1218554     .06236    -1.95   0.051    -.2440788     .000368
+       _cons |  -.0190907   .2792092    -0.07   0.945    -.5663307    .5281492
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_float _Iyr_1999 _Iyr_2000 _Iyr_2001 _Iyr_2002
+              _Iyr_2003 _Iyr_2004 _Iyr_2005 _Iyr_2006 top250
+
+. outreg2 using "$Output\Table4.doc", append ctitle(Polynomial N=1) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table4.doc
+dir : seeout
+
+. 
+. *** Especification 2
+. xi: ivregress 2sls indpt_pct log_mktcap log_mktcap2 log_float i.yr (pas = top250), r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+
+Instrumental variables 2SLS regression            Number of obs   =      2,696
+                                                  Wald chi2(12)   =     265.64
+                                                  Prob > chi2     =     0.0000
+                                                  R-squared       =     0.1053
+                                                  Root MSE        =     .16493
+
+                               (Std. err. adjusted for 913 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+   indpt_pct | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |   .1124301   .0283629     3.96   0.000     .0568399    .1680204
+  log_mktcap |  -.2976808   .3373565    -0.88   0.378    -.9588874    .3635257
+ log_mktcap2 |   .0055063   .0079955     0.69   0.491    -.0101646    .0211771
+   log_float |   .1371634   .0150081     9.14   0.000     .1077481    .1665788
+   _Iyr_1999 |   .0184779   .0111312     1.66   0.097    -.0033388    .0402946
+   _Iyr_2000 |   .0119804    .017661     0.68   0.498    -.0226344    .0465953
+   _Iyr_2001 |   .0014848   .0215546     0.07   0.945    -.0407613     .043731
+   _Iyr_2002 |  -.0630628   .0373806    -1.69   0.092    -.1363275    .0102019
+   _Iyr_2003 |  -.1165007    .064735    -1.80   0.072    -.2433789    .0103775
+   _Iyr_2004 |  -.1187597   .0610255    -1.95   0.052    -.2383676    .0008481
+   _Iyr_2005 |  -.0672914   .0497049    -1.35   0.176    -.1647112    .0301283
+   _Iyr_2006 |  -.1220241   .0621763    -1.96   0.050    -.2438875   -.0001608
+       _cons |   2.420764    3.54246     0.68   0.494    -4.522331    9.363858
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_mktcap2 log_float _Iyr_1999 _Iyr_2000 _Iyr_2001
+              _Iyr_2002 _Iyr_2003 _Iyr_2004 _Iyr_2005 _Iyr_2006 top250
+
+. outreg2 using "$Output\Table4.doc", append ctitle(Polynomial N=2) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table4.doc
+dir : seeout
+
+. 
+. *** Especification 3
+. ivregress 2sls indpt_pct log_mktcap log_mktcap2 log_mktcap3 log_float i.yr (pas = top250), r cluster(cusip6)
+
+Instrumental variables 2SLS regression            Number of obs   =      2,696
+                                                  Wald chi2(13)   =     271.61
+                                                  Prob > chi2     =     0.0000
+                                                  R-squared       =     0.1203
+                                                  Root MSE        =     .16354
+
+                               (Std. err. adjusted for 913 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+   indpt_pct | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |   .1035788   .0299361     3.46   0.001     .0449051    .1622526
+  log_mktcap |   9.389045   4.829049     1.94   0.052    -.0757161    18.85381
+ log_mktcap2 |  -.4435802   .2203138    -2.01   0.044    -.8753874    -.011773
+ log_mktcap3 |   .0069259   .0033377     2.08   0.038      .000384    .0134677
+   log_float |   .1417943   .0153668     9.23   0.000     .1116759    .1719127
+             |
+          yr |
+       1999  |   .0189218   .0111286     1.70   0.089    -.0028898    .0407335
+       2000  |   .0148935   .0178416     0.83   0.404    -.0200754    .0498625
+       2001  |   .0059902   .0220969     0.27   0.786    -.0373188    .0492993
+       2002  |  -.0526491   .0390564    -1.35   0.178    -.1291982    .0239001
+       2003  |  -.0978644   .0679393    -1.44   0.150    -.2310231    .0352942
+       2004  |   -.101587   .0639514    -1.59   0.112    -.2269295    .0237555
+       2005  |  -.0535608   .0519936    -1.03   0.303    -.1554664    .0483448
+       2006  |  -.1038687   .0652291    -1.59   0.111    -.2317154    .0239779
+             |
+       _cons |  -67.14962    35.2202    -1.91   0.057    -136.1799    1.880697
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_mktcap2 log_mktcap3 log_float 1999.yr 2000.yr
+              2001.yr 2002.yr 2003.yr 2004.yr 2005.yr 2006.yr top250
+
+. outreg2 using "$Output\Table4.doc", append ctitle(Polynomial N=3) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table4.doc
+dir : seeout
+
+. 
+end of do-file
+
+. 
+. ***  Table 5 ***
+. do "$Codes\table5.do"
+
+. ***** TABLE 5 ******
+. cd "$wd"
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein
+
+. use "$Data\s12_data_final.dta", clear
+
+. 
+. // winsor2 MF_OWN PF_OWN AF_OWN U_OWN ROA MCap adj_mrktvalue, cuts(1 99) suffix(_W)
+. collapse (mean) MF_OWN PF_OWN AF_OWN U_OWN indpt_pct ppill_rem ab_sm DUALCLASS ROA MCap adj_mrktvalue top250 bot250 r2000, by(cusip6 yr)
+
+. 
+. gen log_mktcap=ln(MCap)
+
+. gen log_mktcap2=log_mktcap^2
+
+. gen log_mktcap3=log_mktcap^3
+
+. gen log_float=ln(adj_mrktvalue)
+
+. 
+. egen pas_2=sd(PF_OWN)
+
+. gen pas=PF_OWN/pas_2
+
+. 
+. 
+. *** Especification 1
+. xi: ivregress 2sls indpt_pct log_mktcap log_float i.yr (pas = top250) if yr<=2002, r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+note: _Iyr_2003 omitted because of collinearity.
+note: _Iyr_2004 omitted because of collinearity.
+note: _Iyr_2005 omitted because of collinearity.
+note: _Iyr_2006 omitted because of collinearity.
+
+Instrumental variables 2SLS regression            Number of obs   =      1,450
+                                                  Wald chi2(7)    =     111.08
+                                                  Prob > chi2     =     0.0000
+                                                  R-squared       =     0.0696
+                                                  Root MSE        =     .18228
+
+                               (Std. err. adjusted for 727 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+   indpt_pct | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |   .1774313   .0607976     2.92   0.004     .0582701    .2965925
+  log_mktcap |  -.0514927   .0204007    -2.52   0.012    -.0914774   -.0115081
+   log_float |   .1002742   .0228296     4.39   0.000     .0555291    .1450194
+   _Iyr_1999 |    .011376   .0119123     0.95   0.340    -.0119717    .0347237
+   _Iyr_2000 |  -.0116963   .0265082    -0.44   0.659    -.0636515    .0402589
+   _Iyr_2001 |  -.0417927    .039927    -1.05   0.295    -.1200482    .0364628
+   _Iyr_2002 |  -.1519557   .0788004    -1.93   0.054    -.3064017    .0024902
+   _Iyr_2003 |          0  (omitted)
+   _Iyr_2004 |          0  (omitted)
+   _Iyr_2005 |          0  (omitted)
+   _Iyr_2006 |          0  (omitted)
+       _cons |   .1575986   .3347136     0.47   0.638     -.498428    .8136252
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_float _Iyr_1999 _Iyr_2000 _Iyr_2001 _Iyr_2002
+              top250
+
+. outreg2 using "$Output\Table5.doc", append ctitle(Polynomial N=1) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table5.doc
+dir : seeout
+
+. 
+. *** Especification 2
+. xi: ivregress 2sls indpt_pct log_mktcap log_mktcap2 log_float i.yr (pas = top250) if yr<=2002, r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+note: _Iyr_2003 omitted because of collinearity.
+note: _Iyr_2004 omitted because of collinearity.
+note: _Iyr_2005 omitted because of collinearity.
+note: _Iyr_2006 omitted because of collinearity.
+
+Instrumental variables 2SLS regression            Number of obs   =      1,450
+                                                  Wald chi2(8)    =     118.10
+                                                  Prob > chi2     =     0.0000
+                                                  R-squared       =     0.0722
+                                                  Root MSE        =     .18203
+
+                               (Std. err. adjusted for 727 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+   indpt_pct | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |   .1754536   .0606001     2.90   0.004     .0566795    .2942276
+  log_mktcap |  -.2710783   .3533572    -0.77   0.443    -.9636456    .4214891
+ log_mktcap2 |   .0051515   .0083195     0.62   0.536    -.0111544    .0214575
+   log_float |   .1043022   .0229285     4.55   0.000     .0593632    .1492411
+   _Iyr_1999 |    .012246   .0118772     1.03   0.303    -.0110328    .0355249
+   _Iyr_2000 |  -.0098311   .0265048    -0.37   0.711    -.0617796    .0421174
+   _Iyr_2001 |  -.0389929   .0398758    -0.98   0.328    -.1171479    .0391622
+   _Iyr_2002 |  -.1486524   .0785612    -1.89   0.058    -.3026295    .0053248
+   _Iyr_2003 |          0  (omitted)
+   _Iyr_2004 |          0  (omitted)
+   _Iyr_2005 |          0  (omitted)
+   _Iyr_2006 |          0  (omitted)
+       _cons |   2.439596   3.690614     0.66   0.509    -4.793875    9.673066
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_mktcap2 log_float _Iyr_1999 _Iyr_2000 _Iyr_2001
+              _Iyr_2002 top250
+
+. outreg2 using "$Output\Table5.doc", append ctitle(Polynomial N=2) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table5.doc
+dir : seeout
+
+. 
+. *** Especification 3
+. ivregress 2sls indpt_pct log_mktcap log_mktcap2 log_mktcap3 log_float i.yr (pas = top250) if yr<=2002, r cluster(cusip6)
+note: 2003.yr identifies no observations in the sample.
+note: 2004.yr identifies no observations in the sample.
+note: 2005.yr identifies no observations in the sample.
+note: 2006.yr identifies no observations in the sample.
+
+Instrumental variables 2SLS regression            Number of obs   =      1,450
+                                                  Wald chi2(9)    =     122.73
+                                                  Prob > chi2     =     0.0000
+                                                  R-squared       =     0.0906
+                                                  Root MSE        =     .18021
+
+                               (Std. err. adjusted for 727 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+   indpt_pct | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |   .1606079   .0626158     2.56   0.010     .0378831    .2833327
+  log_mktcap |   11.65141    5.49083     2.12   0.034     .8895821    22.41324
+ log_mktcap2 |  -.5467789   .2508374    -2.18   0.029    -1.038411   -.0551467
+ log_mktcap3 |   .0084972   .0038035     2.23   0.025     .0010426    .0159519
+   log_float |   .1088589   .0230816     4.72   0.000     .0636197     .154098
+             |
+          yr |
+       1999  |   .0128858   .0118252     1.09   0.276    -.0102912    .0360627
+       2000  |  -.0046043   .0269183    -0.17   0.864    -.0573631    .0481545
+       2001  |  -.0312622    .040706    -0.77   0.442    -.1110445      .04852
+       2002  |   -.131529   .0806818    -1.63   0.103    -.2896625    .0266044
+       2003  |          0  (empty)
+       2004  |          0  (empty)
+       2005  |          0  (empty)
+       2006  |          0  (empty)
+             |
+       _cons |   -83.2747   39.99559    -2.08   0.037    -161.6646   -4.884782
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_mktcap2 log_mktcap3 log_float 1999.yr 2000.yr
+              2001.yr 2002.yr top250
+
+. outreg2 using "$Output\Table5.doc", append ctitle(Polynomial N=3) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table5.doc
+dir : seeout
+
+. 
+. *** Especification 4
+. xi: ivregress 2sls indpt_pct log_mktcap log_float i.yr (pas = top250) if yr>2002, r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+note: _Iyr_1999 omitted because of collinearity.
+note: _Iyr_2000 omitted because of collinearity.
+note: _Iyr_2001 omitted because of collinearity.
+note: _Iyr_2002 omitted because of collinearity.
+note: _Iyr_2006 omitted because of collinearity.
+
+Instrumental variables 2SLS regression            Number of obs   =      1,246
+                                                  Wald chi2(6)    =      76.54
+                                                  Prob > chi2     =     0.0000
+                                                  R-squared       =          .
+                                                  Root MSE        =     .14249
+
+                               (Std. err. adjusted for 511 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+   indpt_pct | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |   .0882024   .0255496     3.45   0.001     .0381261    .1382788
+  log_mktcap |  -.0632697   .0274374    -2.31   0.021     -.117046   -.0094934
+   log_float |   .1538461   .0248641     6.19   0.000     .1051134    .2025789
+   _Iyr_1999 |          0  (omitted)
+   _Iyr_2000 |          0  (omitted)
+   _Iyr_2001 |          0  (omitted)
+   _Iyr_2002 |          0  (omitted)
+   _Iyr_2003 |   .0212912   .0143161     1.49   0.137    -.0067677    .0493502
+   _Iyr_2004 |   .0084139   .0096872     0.87   0.385    -.0105727    .0274005
+   _Iyr_2005 |   .0466448   .0147894     3.15   0.002      .017658    .0756316
+   _Iyr_2006 |          0  (omitted)
+       _cons |  -.3699792   .4610471    -0.80   0.422    -1.273615    .5336564
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_float _Iyr_2003 _Iyr_2004 _Iyr_2005 top250
+
+. outreg2 using "$Output\Table5.doc", append ctitle(Polynomial N=1) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table5.doc
+dir : seeout
+
+. 
+. *** Especification 5
+. xi: ivregress 2sls indpt_pct log_mktcap log_mktcap2 log_float i.yr (pas = top250) if yr>2002, r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+note: _Iyr_1999 omitted because of collinearity.
+note: _Iyr_2000 omitted because of collinearity.
+note: _Iyr_2001 omitted because of collinearity.
+note: _Iyr_2002 omitted because of collinearity.
+note: _Iyr_2006 omitted because of collinearity.
+
+Instrumental variables 2SLS regression            Number of obs   =      1,246
+                                                  Wald chi2(7)    =      79.50
+                                                  Prob > chi2     =     0.0000
+                                                  R-squared       =     0.0233
+                                                  Root MSE        =     .14061
+
+                               (Std. err. adjusted for 511 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+   indpt_pct | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |    .079405   .0249905     3.18   0.001     .0304245    .1283854
+  log_mktcap |   1.034664   .9233368     1.12   0.262    -.7750433    2.844371
+ log_mktcap2 |  -.0261343   .0219404    -1.19   0.234    -.0691366    .0168681
+   log_float |   .1552069   .0245646     6.32   0.000     .1070612    .2033525
+   _Iyr_1999 |          0  (omitted)
+   _Iyr_2000 |          0  (omitted)
+   _Iyr_2001 |          0  (omitted)
+   _Iyr_2002 |          0  (omitted)
+   _Iyr_2003 |   .0222092    .014029     1.58   0.113    -.0052872    .0497056
+   _Iyr_2004 |   .0078164   .0094672     0.83   0.409    -.0107389    .0263717
+   _Iyr_2005 |   .0425294   .0142855     2.98   0.003     .0145304    .0705284
+   _Iyr_2006 |          0  (omitted)
+       _cons |  -11.89229   9.733101    -1.22   0.222    -30.96882    7.184235
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_mktcap2 log_float _Iyr_2003 _Iyr_2004 _Iyr_2005
+              top250
+
+. outreg2 using "$Output\Table5.doc", append ctitle(Polynomial N=2) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table5.doc
+dir : seeout
+
+. 
+. *** Especification 6
+. ivregress 2sls indpt_pct log_mktcap log_mktcap2 log_mktcap3 log_float i.yr (pas = top250) if yr>2002, r cluster(cusip6)
+note: log_mktcap3 omitted because of collinearity.
+note: 1998.yr identifies no observations in the sample.
+note: 1999.yr identifies no observations in the sample.
+note: 2000.yr identifies no observations in the sample.
+note: 2001.yr identifies no observations in the sample.
+note: 2002.yr identifies no observations in the sample.
+note: 2006.yr omitted because of collinearity.
+
+Instrumental variables 2SLS regression            Number of obs   =      1,246
+                                                  Wald chi2(7)    =      79.50
+                                                  Prob > chi2     =     0.0000
+                                                  R-squared       =     0.0233
+                                                  Root MSE        =     .14061
+
+                               (Std. err. adjusted for 511 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+   indpt_pct | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |    .079405   .0249905     3.18   0.001     .0304245    .1283854
+  log_mktcap |   1.034664   .9233368     1.12   0.262    -.7750433    2.844371
+ log_mktcap2 |  -.0261343   .0219404    -1.19   0.234    -.0691366    .0168681
+ log_mktcap3 |          0  (omitted)
+   log_float |   .1552069   .0245646     6.32   0.000     .1070612    .2033525
+             |
+          yr |
+       1998  |          0  (empty)
+       1999  |          0  (empty)
+       2000  |          0  (empty)
+       2001  |          0  (empty)
+       2002  |          0  (empty)
+       2003  |   .0222092    .014029     1.58   0.113    -.0052872    .0497056
+       2004  |   .0078164   .0094672     0.83   0.409    -.0107389    .0263717
+       2005  |   .0425294   .0142855     2.98   0.003     .0145304    .0705284
+       2006  |          0  (omitted)
+             |
+       _cons |  -11.89229   9.733101    -1.22   0.222    -30.96882    7.184235
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_mktcap2 log_float 2003.yr 2004.yr 2005.yr
+              top250
+
+. outreg2 using "$Output\Table5.doc", append ctitle(Polynomial N=3) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table5.doc
+dir : seeout
+
+. 
+end of do-file
+
+. 
+. ***  Table 6 ***
+. do "$Codes\table6.do"
+
+. 
+. ***** TABLE 6 ******
+. cd "$wd"
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein
+
+. use "$Data\s12_data_final.dta", clear
+
+. 
+. // winsor2 MF_OWN PF_OWN AF_OWN U_OWN ROA MCap adj_mrktvalue, cuts(1 99) suffix(_W)
+. collapse (mean) MF_OWN PF_OWN AF_OWN U_OWN indpt_pct ppill_rem ab_sm DUALCLASS ROA MCap adj_mrktvalue top250 bot250 r2000, by(cusip6 yr)
+
+. 
+. gen log_mktcap=ln(MCap)
+
+. gen log_mktcap2=log_mktcap^2
+
+. gen log_mktcap3=log_mktcap^3
+
+. gen log_float=ln(adj_mrktvalue)
+
+. 
+. egen pas_2=sd(PF_OWN)
+
+. gen pas=PF_OWN/pas_2
+
+. 
+. 
+. *** Especification 1
+. xi: ivregress 2sls ppill_rem log_mktcap log_float i.yr (pas = top250), r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+
+Instrumental variables 2SLS regression            Number of obs   =      3,097
+                                                  Wald chi2(11)   =      29.65
+                                                  Prob > chi2     =     0.0018
+                                                  R-squared       =          .
+                                                  Root MSE        =     .11164
+
+                             (Std. err. adjusted for 1,021 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+   ppill_rem | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |   .0231243   .0106883     2.16   0.031     .0021757     .044073
+  log_mktcap |   .0212145   .0121454     1.75   0.081    -.0025902    .0450191
+   log_float |  -.0176752    .012515    -1.41   0.158    -.0422041    .0068537
+   _Iyr_1999 |  -.0022481   .0013277    -1.69   0.090    -.0048503    .0003541
+   _Iyr_2000 |  -.0015131   .0063868    -0.24   0.813    -.0140311    .0110048
+   _Iyr_2001 |  -.0060662   .0077276    -0.79   0.432     -.021212    .0090796
+   _Iyr_2002 |  -.0175256   .0099134    -1.77   0.077    -.0369554    .0019043
+   _Iyr_2003 |  -.0437645   .0229245    -1.91   0.056    -.0886957    .0011667
+   _Iyr_2004 |  -.0281135   .0197285    -1.43   0.154    -.0667807    .0105537
+   _Iyr_2005 |  -.0174897   .0163197    -1.07   0.284    -.0494758    .0144963
+   _Iyr_2006 |  -.0079884    .021046    -0.38   0.704    -.0492378    .0332609
+       _cons |  -.2112124   .1356491    -1.56   0.119    -.4770798    .0546549
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_float _Iyr_1999 _Iyr_2000 _Iyr_2001 _Iyr_2002
+              _Iyr_2003 _Iyr_2004 _Iyr_2005 _Iyr_2006 top250
+
+. outreg2 using "$Output\Table6.doc", append ctitle(Polynomial N=1) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table6.doc
+dir : seeout
+
+. 
+. *** Especification 2
+. xi: ivregress 2sls ppill_rem log_mktcap log_mktcap2 log_float i.yr (pas = top250), r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+
+Instrumental variables 2SLS regression            Number of obs   =      3,097
+                                                  Wald chi2(12)   =      30.34
+                                                  Prob > chi2     =     0.0025
+                                                  R-squared       =     0.0014
+                                                  Root MSE        =     .11143
+
+                             (Std. err. adjusted for 1,021 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+   ppill_rem | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |    .024152   .0107531     2.25   0.025     .0030763    .0452277
+  log_mktcap |   -.633939   .5023941    -1.26   0.207    -1.618613    .3507354
+ log_mktcap2 |   .0154213   .0120036     1.28   0.199    -.0081053     .038948
+   log_float |  -.0113222   .0086125    -1.31   0.189    -.0282025    .0055581
+   _Iyr_1999 |  -.0005797   .0016509    -0.35   0.725    -.0038154     .002656
+   _Iyr_2000 |   .0012051   .0068322     0.18   0.860    -.0121859     .014596
+   _Iyr_2001 |  -.0024463   .0070696    -0.35   0.729    -.0163026    .0114099
+   _Iyr_2002 |  -.0163349   .0095288    -1.71   0.086     -.035011    .0023411
+   _Iyr_2003 |  -.0395148     .02143    -1.84   0.065    -.0815169    .0024873
+   _Iyr_2004 |  -.0250344   .0188756    -1.33   0.185    -.0620298    .0119611
+   _Iyr_2005 |  -.0144459   .0156981    -0.92   0.357    -.0452136    .0163217
+   _Iyr_2006 |  -.0058476   .0205207    -0.28   0.776    -.0460673    .0343722
+       _cons |   6.649577   5.280955     1.26   0.208    -3.700905    17.00006
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_mktcap2 log_float _Iyr_1999 _Iyr_2000 _Iyr_2001
+              _Iyr_2002 _Iyr_2003 _Iyr_2004 _Iyr_2005 _Iyr_2006 top250
+
+. outreg2 using "$Output\Table6.doc", append ctitle(Polynomial N=2) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table6.doc
+dir : seeout
+
+. 
+. *** Especification 3
+. ivregress 2sls ppill_rem log_mktcap log_mktcap2 log_mktcap3 log_float i.yr (pas = top250), r cluster(cusip6)
+
+Instrumental variables 2SLS regression            Number of obs   =      3,097
+                                                  Wald chi2(13)   =      39.93
+                                                  Prob > chi2     =     0.0001
+                                                  R-squared       =     0.0244
+                                                  Root MSE        =     .11014
+
+                             (Std. err. adjusted for 1,021 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+   ppill_rem | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |   .0114539   .0112392     1.02   0.308    -.0105744    .0334823
+  log_mktcap |   15.77691   5.652406     2.79   0.005       4.6984    26.85543
+ log_mktcap2 |  -.7468245   .2673667    -2.79   0.005    -1.270854   -.2227955
+ log_mktcap3 |   .0117784   .0042101     2.80   0.005     .0035267    .0200301
+   log_float |  -.0003779   .0087403    -0.04   0.966    -.0175086    .0167528
+             |
+          yr |
+       1999  |   .0003366   .0015668     0.21   0.830    -.0027343    .0034076
+       2000  |   .0059305   .0072069     0.82   0.411    -.0081949    .0200558
+       2001  |   .0048272   .0078197     0.62   0.537     -.010499    .0201535
+       2002  |  -.0031612    .010402    -0.30   0.761    -.0235487    .0172263
+       2003  |  -.0142583   .0231427    -0.62   0.538    -.0596171    .0311005
+       2004  |  -.0031308   .0206344    -0.15   0.879    -.0435734    .0373118
+       2005  |   .0023418    .017128     0.14   0.891    -.0312285    .0359121
+       2006  |    .016538   .0222982     0.74   0.458    -.0271656    .0602416
+             |
+       _cons |  -111.0472   39.82181    -2.79   0.005    -189.0965   -32.99789
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_mktcap2 log_mktcap3 log_float 1999.yr 2000.yr
+              2001.yr 2002.yr 2003.yr 2004.yr 2005.yr 2006.yr top250
+
+. outreg2 using "$Output\Table6.doc", append ctitle(Polynomial N=3) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table6.doc
+dir : seeout
+
+. 
+. *** Especification 4
+. xi: ivregress 2sls ab_sm log_mktcap log_float i.yr (pas = top250), r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+
+Instrumental variables 2SLS regression            Number of obs   =      3,097
+                                                  Wald chi2(11)   =      10.20
+                                                  Prob > chi2     =     0.5128
+                                                  R-squared       =          .
+                                                  Root MSE        =     .07192
+
+                             (Std. err. adjusted for 1,021 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+       ab_sm | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |   .0165796   .0066104     2.51   0.012     .0036235    .0295357
+  log_mktcap |   .0078629   .0034427     2.28   0.022     .0011154    .0146105
+   log_float |  -.0042103    .003731    -1.13   0.259     -.011523    .0031023
+   _Iyr_1999 |  -.0013284   .0006536    -2.03   0.042    -.0026095   -.0000474
+   _Iyr_2000 |   .0074797   .0065864     1.14   0.256    -.0054293    .0203887
+   _Iyr_2001 |   .0033233   .0066945     0.50   0.620    -.0097977    .0164444
+   _Iyr_2002 |   -.010241   .0051589    -1.99   0.047    -.0203523   -.0001296
+   _Iyr_2003 |  -.0236755   .0109912    -2.15   0.031    -.0452178   -.0021331
+   _Iyr_2004 |  -.0301937   .0121016    -2.50   0.013    -.0539124   -.0064751
+   _Iyr_2005 |  -.0239469   .0096328    -2.49   0.013    -.0428268    -.005067
+   _Iyr_2006 |  -.0235858   .0118142    -2.00   0.046    -.0467413   -.0004303
+       _cons |  -.1154175   .0673919    -1.71   0.087    -.2475033    .0166683
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_float _Iyr_1999 _Iyr_2000 _Iyr_2001 _Iyr_2002
+              _Iyr_2003 _Iyr_2004 _Iyr_2005 _Iyr_2006 top250
+
+. outreg2 using "$Output\Table6.doc", append ctitle(Polynomial N=1) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table6.doc
+dir : seeout
+
+. 
+. *** Especification 5
+. xi: ivregress 2sls ab_sm log_mktcap log_mktcap2 log_float i.yr (pas = top250), r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+
+Instrumental variables 2SLS regression            Number of obs   =      3,097
+                                                  Wald chi2(12)   =      10.22
+                                                  Prob > chi2     =     0.5970
+                                                  R-squared       =          .
+                                                  Root MSE        =     .07191
+
+                             (Std. err. adjusted for 1,021 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+       ab_sm | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |   .0164548   .0065844     2.50   0.012     .0035497      .02936
+  log_mktcap |     .08741   .0467861     1.87   0.062     -.004289    .1791091
+ log_mktcap2 |  -.0018724   .0010687    -1.75   0.080    -.0039671    .0002223
+   log_float |  -.0049817    .003763    -1.32   0.186    -.0123571    .0023937
+   _Iyr_1999 |   -.001531    .000687    -2.23   0.026    -.0028774   -.0001846
+   _Iyr_2000 |   .0071496   .0064359     1.11   0.267    -.0054645    .0197638
+   _Iyr_2001 |   .0028838   .0065116     0.44   0.658    -.0098786    .0156463
+   _Iyr_2002 |  -.0103855   .0051717    -2.01   0.045    -.0205219   -.0002491
+   _Iyr_2003 |  -.0241914   .0110786    -2.18   0.029    -.0459052   -.0024777
+   _Iyr_2004 |  -.0305676   .0121424    -2.52   0.012    -.0543662   -.0067689
+   _Iyr_2005 |  -.0243165   .0096788    -2.51   0.012    -.0432866   -.0053463
+   _Iyr_2006 |  -.0238458    .011831    -2.02   0.044    -.0470342   -.0006574
+       _cons |  -.9484375   .5040899    -1.88   0.060    -1.936436    .0395606
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_mktcap2 log_float _Iyr_1999 _Iyr_2000 _Iyr_2001
+              _Iyr_2002 _Iyr_2003 _Iyr_2004 _Iyr_2005 _Iyr_2006 top250
+
+. outreg2 using "$Output\Table6.doc", append ctitle(Polynomial N=2) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table6.doc
+dir : seeout
+
+. 
+. *** Especification 6
+. ivregress 2sls ab_sm log_mktcap log_mktcap2 log_mktcap3 log_float i.yr (pas = top250), r cluster(cusip6)
+
+Instrumental variables 2SLS regression            Number of obs   =      3,097
+                                                  Wald chi2(13)   =      10.23
+                                                  Prob > chi2     =     0.6752
+                                                  R-squared       =          .
+                                                  Root MSE        =     .07192
+
+                             (Std. err. adjusted for 1,021 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+       ab_sm | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |   .0166713   .0068161     2.45   0.014     .0033119    .0300307
+  log_mktcap |  -.1923471   .5758081    -0.33   0.738     -1.32091    .9362161
+ log_mktcap2 |   .0111216   .0267225     0.42   0.677    -.0412535    .0634968
+ log_mktcap3 |  -.0002008   .0004117    -0.49   0.626    -.0010077    .0006061
+   log_float |  -.0051683   .0038076    -1.36   0.175    -.0126311    .0022945
+             |
+          yr |
+       1999  |  -.0015466   .0007001    -2.21   0.027    -.0029188   -.0001744
+       2000  |   .0070691   .0064659     1.09   0.274    -.0056039    .0197421
+       2001  |   .0027598   .0065856     0.42   0.675    -.0101477    .0156673
+       2002  |  -.0106101   .0053954    -1.97   0.049    -.0211848   -.0000354
+       2003  |   -.024622   .0115814    -2.13   0.034    -.0473211   -.0019229
+       2004  |   -.030941   .0125509    -2.47   0.014    -.0555402   -.0063418
+       2005  |  -.0246027   .0100006    -2.46   0.014    -.0442035   -.0050018
+       2006  |  -.0242274   .0122458    -1.98   0.048    -.0482287    -.000226
+             |
+       _cons |   1.057949   4.126783     0.26   0.798    -7.030397    9.146295
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_mktcap2 log_mktcap3 log_float 1999.yr 2000.yr
+              2001.yr 2002.yr 2003.yr 2004.yr 2005.yr 2006.yr top250
+
+. outreg2 using "$Output\Table6.doc", append ctitle(Polynomial N=3) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table6.doc
+dir : seeout
+
+. 
+end of do-file
+
+. 
+. ***  Table 7 ***
+. do "$Codes\table7.do"
+
+. 
+. ***** TABLE 7 ******
+. cd "$wd"
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein
+
+. use "$Data\s12_data_final.dta", clear
+
+. 
+. // winsor2 MF_OWN PF_OWN AF_OWN U_OWN ROA MCap adj_mrktvalue, cuts(1 99) suffix(_W)
+. collapse (mean) MF_OWN PF_OWN AF_OWN U_OWN indpt_pct ppill_rem ab_sm DUALCLASS ROA MCap adj_mrktvalue top250 bot250 r2000, by(cusip6 yr)
+
+. 
+. gen log_mktcap=ln(MCap)
+
+. gen log_mktcap2=log_mktcap^2
+
+. gen log_mktcap3=log_mktcap^3
+
+. gen log_float=ln(adj_mrktvalue)
+
+. 
+. egen pas_2=sd(PF_OWN)
+
+. gen pas=PF_OWN/pas_2
+
+. 
+. 
+. *** Especification 1
+. xi: ivregress 2sls DUALCLASS log_mktcap log_float i.yr (pas = top250), r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+
+Instrumental variables 2SLS regression            Number of obs   =      3,097
+                                                  Wald chi2(11)   =      32.70
+                                                  Prob > chi2     =     0.0006
+                                                  R-squared       =     0.0577
+                                                  Root MSE        =       .313
+
+                             (Std. err. adjusted for 1,021 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+   DUALCLASS | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |  -.0930832   .0541278    -1.72   0.085    -.1991719    .0130054
+  log_mktcap |   .1260908   .0441487     2.86   0.004      .039561    .2126206
+   log_float |  -.1268642   .0473157    -2.68   0.007    -.2196012   -.0341272
+   _Iyr_1999 |   .0093683   .0161288     0.58   0.561    -.0222435    .0409801
+   _Iyr_2000 |   .0249828   .0346741     0.72   0.471    -.0429772    .0929429
+   _Iyr_2001 |   .0643723   .0462211     1.39   0.164    -.0262193     .154964
+   _Iyr_2002 |   .1102955   .0590414     1.87   0.062    -.0054236    .2260145
+   _Iyr_2003 |   .1305371   .1123684     1.16   0.245    -.0897008    .3507751
+   _Iyr_2004 |   .1310136   .1016466     1.29   0.197      -.06821    .3302373
+   _Iyr_2005 |   .1093599   .0816608     1.34   0.181    -.0506923    .2694121
+   _Iyr_2006 |   .1539982   .1028174     1.50   0.134    -.0475203    .3555166
+       _cons |  -.7044564   .5760346    -1.22   0.221    -1.833463    .4245507
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_float _Iyr_1999 _Iyr_2000 _Iyr_2001 _Iyr_2002
+              _Iyr_2003 _Iyr_2004 _Iyr_2005 _Iyr_2006 top250
+
+. outreg2 using "$Output\Table7.doc", append ctitle(Polynomial N=1) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table7.doc
+dir : seeout
+
+.  
+. *** Especification 2
+. xi: ivregress 2sls DUALCLASS log_mktcap log_mktcap2 log_float i.yr (pas = top250), r cluster(cusip6)
+i.yr              _Iyr_1998-2006      (naturally coded; _Iyr_1998 omitted)
+
+Instrumental variables 2SLS regression            Number of obs   =      3,097
+                                                  Wald chi2(12)   =      36.08
+                                                  Prob > chi2     =     0.0003
+                                                  R-squared       =     0.0582
+                                                  Root MSE        =     .31291
+
+                             (Std. err. adjusted for 1,021 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+   DUALCLASS | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |  -.0924322   .0546273    -1.69   0.091    -.1994998    .0146355
+  log_mktcap |  -.2889922   1.027853    -0.28   0.779    -2.303548    1.725564
+ log_mktcap2 |   .0097704   .0247146     0.40   0.693    -.0386694    .0582102
+   log_float |  -.1228392   .0450602    -2.73   0.006    -.2111556   -.0345228
+   _Iyr_1999 |   .0104253   .0156714     0.67   0.506      -.02029    .0411406
+   _Iyr_2000 |    .026705   .0335581     0.80   0.426    -.0390676    .0924776
+   _Iyr_2001 |   .0666657   .0448781     1.49   0.137    -.0212937    .1546252
+   _Iyr_2002 |   .1110498   .0586269     1.89   0.058    -.0038568    .2259564
+   _Iyr_2003 |   .1332296   .1105885     1.20   0.228    -.0835198     .349979
+   _Iyr_2004 |   .1329645   .1004363     1.32   0.186    -.0638871     .329816
+   _Iyr_2005 |   .1112884   .0804464     1.38   0.167    -.0463836    .2689604
+   _Iyr_2006 |   .1553546   .1019943     1.52   0.128    -.0445505    .3552596
+       _cons |   3.642307   10.76577     0.34   0.735    -17.45821    24.74282
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_mktcap2 log_float _Iyr_1999 _Iyr_2000 _Iyr_2001
+              _Iyr_2002 _Iyr_2003 _Iyr_2004 _Iyr_2005 _Iyr_2006 top250
+
+. outreg2 using "$Output\Table7.doc", append ctitle(Polynomial N=2) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table7.doc
+dir : seeout
+
+. 
+. *** Especification 3
+. ivregress 2sls DUALCLASS log_mktcap log_mktcap2 log_mktcap3 log_float i.yr (pas = top250), r cluster(cusip6)
+
+Instrumental variables 2SLS regression            Number of obs   =      3,097
+                                                  Wald chi2(13)   =      40.25
+                                                  Prob > chi2     =     0.0001
+                                                  R-squared       =     0.0765
+                                                  Root MSE        =     .30987
+
+                             (Std. err. adjusted for 1,021 clusters in cusip6)
+------------------------------------------------------------------------------
+             |               Robust
+   DUALCLASS | Coefficient  std. err.      z    P>|z|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+         pas |  -.0623941   .0596575    -1.05   0.296    -.1793206    .0545324
+  log_mktcap |  -39.10998   13.18584    -2.97   0.003    -64.95376    -13.2662
+ log_mktcap2 |   1.812915   .6022572     3.01   0.003     .6325127    2.993318
+ log_mktcap3 |  -.0278626   .0091256    -3.05   0.002    -.0457485   -.0099767
+   log_float |  -.1487285   .0495869    -3.00   0.003     -.245917   -.0515401
+             |
+          yr |
+       1999  |   .0082576   .0156715     0.53   0.598     -.022458    .0389732
+       2000  |   .0155267   .0352719     0.44   0.660    -.0536049    .0846583
+       2001  |   .0494596   .0474267     1.04   0.297    -.0434949    .1424141
+       2002  |   .0798864   .0630348     1.27   0.205    -.0436595    .2034323
+       2003  |   .0734837   .1211516     0.61   0.544     -.163969    .3109364
+       2004  |   .0811502   .1091747     0.74   0.457    -.1328282    .2951286
+       2005  |   .0715759   .0869461     0.82   0.410    -.0988354    .2419872
+       2006  |      .1024   .1107952     0.92   0.355    -.1147546    .3195547
+             |
+       _cons |   282.0621   96.20867     2.93   0.003     93.49655    470.6276
+------------------------------------------------------------------------------
+Instrumented: pas
+ Instruments: log_mktcap log_mktcap2 log_mktcap3 log_float 1999.yr 2000.yr
+              2001.yr 2002.yr 2003.yr 2004.yr 2005.yr 2006.yr top250
+
+. outreg2 using "$Output\Table7.doc", append ctitle(Polynomial N=3) drop(log_float c.log* _I*)  alpha(0.01, 0.10) dec(3) noobs nocons
+C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Output\Table7.doc
+dir : seeout
+
+. 
+end of do-file
+
+. 
+. *** log file ***
+. log close
+      name:  <unnamed>
+       log:  C:\Users\Giovanni\OneDrive - Duke University\Appel-Gormley-Kein\\Replication_log_file.log
+  log type:  text
+ closed on:  27 Feb 2024, 07:47:55
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
